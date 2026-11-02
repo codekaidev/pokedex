@@ -9,13 +9,20 @@ import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import { Pokemon } from './entities/pokemon.entity';
 import { isValidObjectId, Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PokemonService {
+  private defaultLimit: number;
+
   constructor(
     @InjectModel(Pokemon.name)
     private readonly pokemonModel: Model<Pokemon>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.defaultLimit = configService.getOrThrow<number>('defaultLimit');
+  }
   async create(createPokemonDto: CreatePokemonDto) {
     const { name } = createPokemonDto;
     createPokemonDto.name = name.toLocaleLowerCase().trim();
@@ -40,8 +47,14 @@ export class PokemonService {
     }
   }
 
-  findAll() {
-    return `This action returns all pokemon`;
+  findAll(paginationDto: PaginationDto) {
+    const { limit = this.defaultLimit, offset = 0 } = paginationDto;
+    return this.pokemonModel
+      .find()
+      .limit(limit)
+      .skip(offset) //? skip no es un numero de pagina. Sirve para decirle a mongo desde que fila va a empezar a retornar datos
+      .sort({ no: 1 })
+      .select('-__v');
   }
 
   /**
